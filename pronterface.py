@@ -15,6 +15,7 @@ except:
     print _("WX is not installed. This program requires WX to run.")
     raise
 import printcore, sys, glob, time, threading, traceback, StringIO, gviz, traceback, cStringIO
+import subprocess
 try:
     os.chdir(os.path.split(__file__)[0])
 except:
@@ -59,6 +60,8 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.settings.last_bed_temperature = 0.0
         self.settings.bed_size_x = 200.
         self.settings.bed_size_y = 200.
+        self.settings.bed_offset_x = 100.
+        self.settings.bed_offset_y = 100.
         self.settings.preview_grid_step1 = 10.
         self.settings.preview_grid_step2 = 50.
         self.settings.preview_extrusion_width = 0.5
@@ -307,17 +310,30 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.Bind(wx.EVT_MENU, self.new_macro, self.macros_menu.Append(-1, _("<&New...>")))
         self.Bind(wx.EVT_MENU, lambda *e:options(self), m.Append(-1,_("&Options"),_(" Options dialog")))
         
-        self.Bind(wx.EVT_MENU, lambda x:threading.Thread(target=lambda :self.do_skein("set")).start(), m.Append(-1,_("SFACT Settings"),_(" Adjust SFACT settings")))
-        try:
-            from SkeinforgeQuickEditDialog import SkeinforgeQuickEditDialog
-            self.Bind(wx.EVT_MENU, lambda *e:SkeinforgeQuickEditDialog(self), m.Append(-1,_("SFACT Quick Settings"),_(" Quickly adjust SFACT settings for active profile")))
-        except:
-            pass
+        if os.path.exists("skeinforge"):
+            self.Bind(wx.EVT_MENU, lambda x:threading.Thread(target=lambda :self.do_skein("set")).start(), m.Append(-1,_("SFACT Settings"),_(" Adjust SFACT settings")))
+            try:
+                from SkeinforgeQuickEditDialog import SkeinforgeQuickEditDialog
+                self.Bind(wx.EVT_MENU, lambda *e:SkeinforgeQuickEditDialog(self), m.Append(-1,_("SFACT Quick Settings"),_(" Quickly adjust SFACT settings for active profile")))
+            except:
+                pass
 
         self.menustrip.Append(m,_("&Settings"))
         self.update_macros_menu()
+
+		#Skeinforge menu
+        m = wx.Menu()
+        path = '../'
+        for sfPath in os.listdir(path):
+            if sfPath[0:2] == "SF" and os.path.isdir('../' + sfPath):
+                sfmenu = wx.Menu()
+                self.Bind(wx.EVT_MENU, lambda e,sf=sfPath:self.run_skeinforge_slice(sf), sfmenu.Append(-1, _("Slice file...")))
+                self.Bind(wx.EVT_MENU, lambda e,sf=sfPath:self.run_skeinforge_settings(sf), sfmenu.Append(-1, _("Change settings...")))
+                m.AppendSubMenu(sfmenu, sfPath)
+        if m.GetMenuItemCount() > 0:
+            self.menustrip.Append(m,_("Skein&forge"))
+
         self.SetMenuBar(self.menustrip)
-    
     
     def doneediting(self,gcode):
         f=open(self.filename,"w")
@@ -610,11 +626,13 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         # lls.Add((10,0),pos=(0,11),span=(1,1))
         self.gviz=gviz.gviz(self.panel,(300,300),
             bedsize=(self.settings.bed_size_x,self.settings.bed_size_y),
+            offset=(self.settings.bed_offset_x,self.settings.bed_offset_y),
             grid=(self.settings.preview_grid_step1,self.settings.preview_grid_step2),
             extrusion_width=self.settings.preview_extrusion_width)
         self.gviz.showall=1
         self.gwindow=gviz.window([],
             bedsize=(self.settings.bed_size_x,self.settings.bed_size_y),
+            offset=(self.settings.bed_offset_x,self.settings.bed_offset_y),
             grid=(self.settings.preview_grid_step1,self.settings.preview_grid_step2),
             extrusion_width=self.settings.preview_extrusion_width)
         self.gviz.Bind(wx.EVT_LEFT_DOWN,self.showwin)
@@ -1259,7 +1277,57 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.stopsf=0
         thread(target=self.skein_func).start()
         thread(target=self.skein_monitor).start()
-        
+    
+    def run_skeinforge_slice(self,sf):
+        basedir=self.settings.last_file_path
+        if not os.path.exists(basedir):
+            basedir = "."
+            try:
+                basedir=os.path.split(self.filename)[0]
+            except:
+                pass
+        dlg=wx.FileDialog(self,_("Open file to print"),basedir,style=wx.FD_OPEN|wx.FD_FILE_MUST_EXIST)
+        dlg.SetWildcard(_("OBJ, STL files (;*.stl;*.STL;*.obj;*.OBJ;)"))
+        if dlg.ShowModal() == wx.ID_OK:
+            name=dlg.GetPath()
+            if not(os.path.exists(name)):
+                self.status.SetStatusText(_("File not found!"))
+                return
+            script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../" + sf + "/skeinforge_application/skeinforge.py"));
+            self.filename = name
+            p = subprocess.Popen([sys.executable, script, name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            thread(target=lambda p=p:self.monitor_skeinforge_slice(p)).start()
+
+    def monitor_skeinforge_slice(self, p):
+        try:
+            wx.CallAfter(self.status.SetStatusText,_("Slicing..."))
+        except:
+            pass
+        line = p.stdout.readline()
+        while(len(line) > 0):
+            print(line[:-1])
+            line = p.stdout.readline()
+        fn=self.filename
+        try:
+            self.filename=self.filename.replace(".stl","_export.gcode").replace(".STL","_export.gcode").replace(".obj","_export.gcode").replace(".OBJ","_export.gcode")
+            of=open(self.filename)
+            self.f=[i.replace("\n","").replace("\r","") for i in of]
+            of.close
+            if self.p.online:
+                    wx.CallAfter(self.printbtn.Enable)
+                    
+            wx.CallAfter(self.status.SetStatusText,_("Loaded ")+self.filename+_(", %d lines") % (len(self.f),))
+            wx.CallAfter(self.pausebtn.Disable)
+            wx.CallAfter(self.printbtn.SetLabel,_("Print"))
+
+            threading.Thread(target=self.loadviz).start()
+        except:
+            self.filename=fn
+
+    def run_skeinforge_settings(self,sf):
+        script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../" + sf + "/skeinforge_application/skeinforge.py"));
+        subprocess.call([sys.executable, script])
+    
     def loadfile(self,event,filename=None):
         basedir=self.settings.last_file_path
         if not os.path.exists(basedir):
@@ -1269,7 +1337,10 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             except:
                 pass
         dlg=wx.FileDialog(self,_("Open file to print"),basedir,style=wx.FD_OPEN|wx.FD_FILE_MUST_EXIST)
-        dlg.SetWildcard(_("OBJ, STL, and GCODE files (;*.gcode;*.gco;*.g;*.stl;*.STL;*.obj;*.OBJ;)"))
+        if os.path.exists("skeinforge"):
+            dlg.SetWildcard(_("OBJ, STL, and GCODE files (;*.gcode;*.gco;*.g;*.stl;*.STL;*.obj;*.OBJ;)"))
+        else:
+            dlg.SetWildcard(_("GCODE files (;*.gcode;*.gco;*.g;)"))
         if(filename is not None or dlg.ShowModal() == wx.ID_OK):
             if filename is not None:
                 name=filename

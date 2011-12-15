@@ -205,7 +205,9 @@ class Settings:
             pass
         return []
     def _all_settings(self):
-        return dict([(k,getattr(self,k)) for k in self.__dict__.keys() if not k.startswith("_")])
+    	keys = self.__dict__.keys()
+    	keys.sort();
+        return dict([(k,getattr(self,k)) for k in keys if not k.startswith("_")])
 
 class pronsole(cmd.Cmd):
     def __init__(self):

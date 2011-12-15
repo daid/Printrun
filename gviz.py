@@ -1,9 +1,9 @@
 import wx,time
 
 class window(wx.Frame):
-    def __init__(self,f,size=(600,600),bedsize=(200,200),grid=(10,50),extrusion_width=0.5):
+    def __init__(self,f,size=(600,600),bedsize=(200,200),offset=(100,100),grid=(10,50),extrusion_width=0.5):
         wx.Frame.__init__(self,None,title="Layer view (Use shift+mousewheel to switch layers)",size=(size[0],size[1]))
-        self.p=gviz(self,size=size,bedsize=bedsize,grid=grid,extrusion_width=extrusion_width)
+        self.p=gviz(self,size=size,bedsize=bedsize,offset=offset,grid=grid,extrusion_width=extrusion_width)
         s=time.time()
         for i in f:
             self.p.addgcode(i)
@@ -53,10 +53,11 @@ class window(wx.Frame):
             elif z < 0: self.p.zoom(event.GetX(),event.GetY(),1/1.2)
         
 class gviz(wx.Panel):
-    def __init__(self,parent,size=(200,200),bedsize=(200,200),grid=(10,50),extrusion_width=0.5):
+    def __init__(self,parent,size=(200,200),bedsize=(200,200),offset=(100,100),grid=(10,50),extrusion_width=0.5):
         wx.Panel.__init__(self,parent,-1,size=(size[0],size[1]))
         self.size=size
         self.bedsize=bedsize
+        self.offset=offset
         self.grid=grid
         self.lastpos=[0,0,0,0,0,0,0]
         self.hilightpos=self.lastpos[:]
@@ -213,9 +214,9 @@ class gviz(wx.Panel):
                 target=self.hilightpos[:]
             for i in gcode:
                 if i[0]=="x":
-                    target[0]=float(i[1:])
+                    target[0]=float(i[1:])+self.offset[0]
                 elif i[0]=="y":
-                    target[1]=float(i[1:])
+                    target[1]=float(i[1:])+self.offset[1]
                 elif i[0]=="z":
                     target[2]=float(i[1:])
                 elif i[0]=="e":
