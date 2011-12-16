@@ -1293,7 +1293,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             if not(os.path.exists(name)):
                 self.status.SetStatusText(_("File not found!"))
                 return
-            script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../" + sf + "/skeinforge_application/skeinforge.py"));
+            script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../" + sf + "/skeinforge_application/skeinforge.py"));
             self.filename = name
             p = subprocess.Popen([sys.executable, script, name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             thread(target=lambda p=p:self.monitor_skeinforge_slice(p)).start()
@@ -1325,7 +1325,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             self.filename=fn
 
     def run_skeinforge_settings(self,sf):
-        script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../" + sf + "/skeinforge_application/skeinforge.py"));
+        script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../" + sf + "/skeinforge_application/skeinforge.py"));
         subprocess.call([sys.executable, script])
     
     def loadfile(self,event,filename=None):
