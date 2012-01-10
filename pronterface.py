@@ -332,6 +332,13 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
                 m.AppendSubMenu(sfmenu, sfPath)
         if m.GetMenuItemCount() > 0:
             self.menustrip.Append(m,_("Skein&forge"))
+        
+        if os.path.exists("firmware"):
+            m = wx.Menu()
+            for firmwareFile in os.listdir("firmware"):
+                self.Bind(wx.EVT_MENU, lambda e,fw=firmwareFile:self.run_firmware_upload(fw), m.Append(-1, _(firmwareFile)))
+            if m.GetMenuItemCount() > 0:
+                self.menustrip.Append(m,_("Firmware upload"))
 
         self.SetMenuBar(self.menustrip)
     
@@ -1325,6 +1332,21 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
     def run_skeinforge_settings(self,sf):
         script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../" + sf + "/skeinforge_application/skeinforge.py"));
         subprocess.call([sys.executable, script])
+
+    def run_firmware_upload(self, firmware):
+    	self.disconnect(None);
+        p = subprocess.Popen(["avrdude", "-P", str(self.serialport.GetValue()), "-c", "arduino", "-p", "atmega2560", "-b", "57600", "-e", "-U", "flash:w:" + firmware], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        thread(target=lambda p=p:self.monitor_firmware_upload(p)).start()
+
+    def monitor_firmware_upload(self, p):
+        try:
+            wx.CallAfter(self.status.SetStatusText,_("Updating firmware..."))
+        except:
+            pass
+        line = p.stdout.readline()
+        while(len(line) > 0):
+            print(line[:-1])
+            line = p.stdout.readline()
     
     def loadfile(self,event,filename=None):
         basedir=self.settings.last_file_path
