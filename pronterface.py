@@ -60,8 +60,6 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.settings.last_bed_temperature = 0.0
         self.settings.bed_size_x = 200.
         self.settings.bed_size_y = 200.
-        self.settings.bed_offset_x = 100.
-        self.settings.bed_offset_y = 100.
         self.settings.preview_grid_step1 = 10.
         self.settings.preview_grid_step2 = 50.
         self.settings.preview_extrusion_width = 0.5
@@ -628,13 +626,11 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         # lls.Add((10,0),pos=(0,11),span=(1,1))
         self.gviz=gviz.gviz(self.panel,(300,300),
             bedsize=(self.settings.bed_size_x,self.settings.bed_size_y),
-            offset=(self.settings.bed_offset_x,self.settings.bed_offset_y),
             grid=(self.settings.preview_grid_step1,self.settings.preview_grid_step2),
             extrusion_width=self.settings.preview_extrusion_width)
         self.gviz.showall=1
         self.gwindow=gviz.window([],
             bedsize=(self.settings.bed_size_x,self.settings.bed_size_y),
-            offset=(self.settings.bed_offset_x,self.settings.bed_offset_y),
             grid=(self.settings.preview_grid_step1,self.settings.preview_grid_step2),
             extrusion_width=self.settings.preview_extrusion_width)
         self.gviz.Bind(wx.EVT_LEFT_DOWN,self.showwin)
