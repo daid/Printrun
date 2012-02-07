@@ -80,9 +80,10 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         zcol=(180,255,180)
         self.cpbuttons=[
             [_("Motors off"),("M84"),(1,0),(250,250,250),(1,2)],
-            [_("Check temp"),("M105"),(3,5),(225,200,200),(1,3)],
+            [_("Check temp"),("M105"),(3,5),(225,200,200),(1,2)],
             [_("Extrude"),("extrude"),(5,0),(225,200,200),(1,2)],
             [_("Reverse"),("reverse"),(6,0),(225,200,200),(1,2)],
+            [_("Speed"),("speed"),(6,5),(200,200,225),(1,2)],
         ]
         self.custombuttons=[]
         self.btndict={}
@@ -176,6 +177,16 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             if not (l.__class__=="".__class__ or l.__class__==u"".__class__) or (not len(l)):
                 l=str(float(self.edist.GetValue())*-1.0)
             pronsole.pronsole.do_extrude(self,l)
+        except:
+            pass
+
+    def do_speed(self,l=""):
+        try:
+            if not (l.__class__=="".__class__ or l.__class__==u"".__class__) or (not len(l)):
+                l=str(self.rtspeed.GetValue())
+            if self.p.online:
+                self.p.send_now("M220 S"+l)
+                print _("Setting speed to "),f,_("%")
         except:
             pass
     
@@ -630,6 +641,13 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.zfeedc.Bind(wx.EVT_SPINCTRL,self.setfeeds)
         self.zfeedc.SetBackgroundColour((180,255,180))
         self.zfeedc.SetForegroundColour("black")
+
+        self.rtspeed=wx.SpinCtrl(self.panel,-1,"100",min=1,max=1000,size=(60,25),pos=(70,398))
+        self.rtspeed.SetBackgroundColour((200,200,225))
+        self.rtspeed.SetForegroundColour("black")
+        lls.Add(self.rtspeed,pos=(5,5),span=(1,1))
+        lls.Add(wx.StaticText(self.panel,-1,_("%"),pos=(130,407)),pos=(5,6),span=(1,1))
+
         # lls.Add((10,0),pos=(0,11),span=(1,1))
         self.gviz=gviz.gviz(self.panel,(300,300),
             bedsize=(self.settings.bed_size_x,self.settings.bed_size_y),
@@ -1335,7 +1353,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
 
     def run_firmware_upload(self, firmware):
     	self.disconnect(None);
-        p = subprocess.Popen(["avrdude", "-P", str(self.serialport.GetValue()), "-c", "arduino", "-p", "atmega2560", "-b", "57600", "-e", "-U", "flash:w:" + firmware], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(["avrdude", "-P", str(self.serialport.GetValue()), "-c", "arduino", "-p", "atmega2560", "-b", "115200", "-e", "-U", "flash:w:" + firmware], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         thread(target=lambda p=p:self.monitor_firmware_upload(p)).start()
 
     def monitor_firmware_upload(self, p):
