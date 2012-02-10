@@ -113,7 +113,7 @@ def estimate_duration(g):
     # calculate the maximum move duration accounting for above ;)
     # print ".... estimating ...."
     for i in g:
-        if "G4" in i or "G1" in i:
+        if "G4" in i or "G1" in i or "G0" in i:
             if "G4" in i:
                 parts = i.split(" ")
                 moveduration = get_coordinate_value("P", parts[1:])
@@ -121,7 +121,7 @@ def estimate_duration(g):
                     continue
                 else:
                     moveduration /= 1000.0
-            if "G1" in i:
+            if "G0" in i or "G1" in i:
                 parts = i.split(" ")
                 x = get_coordinate_value("X", parts[1:])
                 if x is None: x=lastx
@@ -140,13 +140,14 @@ def estimate_duration(g):
                 # then calculate the time taken to complete the remaining distance
 
                 currenttravel = hypot3d(x, y, z, lastx, lasty, lastz)
-                distance = 2* ((lastf+f) * (f-lastf) * 0.5 ) / acceleration  #2x because we have to accelerate and decelerate
-                if distance <= currenttravel and ( lastf + f )!=0 and f!=0:
-                    moveduration = 2 * distance / ( lastf + f )
-                    currenttravel -= distance
-                    moveduration += currenttravel/f
-                else:
-                    moveduration = math.sqrt( 2 * distance / acceleration )
+                moveduration = currenttravel / f
+#                distance = 2* ((lastf+f) * (f-lastf) * 0.5 ) / acceleration  #2x because we have to accelerate and decelerate
+#                if distance <= currenttravel and ( lastf + f )!=0 and f!=0:
+#                    moveduration = 2 * distance / ( lastf + f )
+#                    currenttravel -= distance
+#                    moveduration += currenttravel/f
+#                else:
+#                    moveduration = math.sqrt( 2 * distance / acceleration )
 
             totalduration += moveduration
 
