@@ -83,7 +83,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             [_("Check temp"),("M105"),(3,5),(225,200,200),(1,2)],
             [_("Extrude"),("extrude"),(5,0),(225,200,200),(1,2)],
             [_("Reverse"),("reverse"),(6,0),(225,200,200),(1,2)],
-            [_("Speed"),("speed"),(6,5),(200,200,225),(1,2)],
+            [_("Set Speed"),("speed"),(6,5),(200,200,225),(1,2)],
         ]
         self.custombuttons=[]
         self.btndict={}
@@ -343,14 +343,11 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
 		#Skeinforge menu
         m = wx.Menu()
         path = '../'
-        for sfPath in os.listdir(path):
-            if sfPath[0:2] == "SF" and os.path.isdir('../' + sfPath):
-                sfmenu = wx.Menu()
-                self.Bind(wx.EVT_MENU, lambda e,sf=sfPath:self.run_skeinforge_slice(sf), sfmenu.Append(-1, _("Slice file...")))
-                self.Bind(wx.EVT_MENU, lambda e,sf=sfPath:self.run_skeinforge_settings(sf), sfmenu.Append(-1, _("Change settings...")))
-                m.AppendSubMenu(sfmenu, sfPath)
+        if os.path.isdir('../SkeinPyPy'):
+                self.Bind(wx.EVT_MENU, lambda e:self.run_skeinpypy_slice(), m.Append(-1, _("Slice file...")))
+                self.Bind(wx.EVT_MENU, lambda e:self.run_skeinpypy_settings(), m.Append(-1, _("Change settings...")))
         if m.GetMenuItemCount() > 0:
-            self.menustrip.Append(m,_("Skein&forge"))
+            self.menustrip.Append(m,_("SkeinPyPy"))
         
         if os.path.exists("firmware"):
             m = wx.Menu()
@@ -1309,7 +1306,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         thread(target=self.skein_func).start()
         thread(target=self.skein_monitor).start()
     
-    def run_skeinforge_slice(self,sf):
+    def run_skeinpypy_slice(self):
         basedir=self.settings.last_file_path
         if not os.path.exists(basedir):
             basedir = "."
@@ -1324,7 +1321,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             if not(os.path.exists(name)):
                 self.status.SetStatusText(_("File not found!"))
                 return
-            script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../" + sf + "/skeinforge_application/skeinforge.py"));
+            script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../SkeinPyPy/skeinforge_application/skeinforge.py"));
             self.filename = name
             p = subprocess.Popen([sys.executable, script, name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             thread(target=lambda p=p:self.monitor_skeinforge_slice(p)).start()
@@ -1355,8 +1352,8 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         except:
             self.filename=fn
 
-    def run_skeinforge_settings(self,sf):
-        script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../" + sf + "/skeinforge_application/skeinforge.py"));
+    def run_skeinforge_settings(self):
+        script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../SkeinPyPy/skeinforge_application/skeinforge.py"));
         subprocess.call([sys.executable, script])
 
     def run_firmware_upload(self, firmware):
