@@ -1352,7 +1352,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         except:
             self.filename=fn
 
-    def run_skeinforge_settings(self):
+    def run_skeinpypy_settings(self):
         script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../SkeinPyPy/skeinforge_application/skeinforge.py"));
         subprocess.call([sys.executable, script])
 
