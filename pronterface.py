@@ -3,6 +3,8 @@
 # Set up Internationalization using gettext
 # searching for installed locales on /usr/share; uses relative folder if not found (windows)
 import os, gettext
+from serial import Serial
+from serial import SerialException
 
 if os.path.exists('/usr/share/pronterface/locale'):
     gettext.install('pronterface', '/usr/share/pronterface/locale', unicode=1)
@@ -15,7 +17,7 @@ except:
     print _("WX is not installed. This program requires WX to run.")
     raise
 import printcore, sys, glob, time, threading, traceback, StringIO, gviz, traceback, cStringIO
-import subprocess
+import subprocess, platform, shutil
 try:
     os.chdir(os.path.split(__file__)[0])
 except:
@@ -344,19 +346,56 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         m = wx.Menu()
         path = '../'
         if os.path.isdir('../SkeinPyPy'):
-                self.Bind(wx.EVT_MENU, lambda e:self.run_skeinpypy_slice(), m.Append(-1, _("Slice file...")))
-                self.Bind(wx.EVT_MENU, lambda e:self.run_skeinpypy_settings(), m.Append(-1, _("Change settings...")))
+            self.Bind(wx.EVT_MENU, lambda e:self.run_skeinpypy_slice(), m.Append(-1, _("Slice file...")))
+            self.Bind(wx.EVT_MENU, lambda e:self.run_skeinpypy_settings(), m.Append(-1, _("Change settings...")))
         if m.GetMenuItemCount() > 0:
             self.menustrip.Append(m,_("SkeinPyPy"))
         
-        if os.path.exists("firmware"):
+        #Firmware upload menu, we assume that if avrdude.conf exists that we have the avrdude executable (platform independend)
+        self.firmwareHardwareOptions = []
+        if os.path.exists("avrdude.conf"):
             m = wx.Menu()
-            for firmwareFile in os.listdir("firmware"):
-                self.Bind(wx.EVT_MENU, lambda e,fw=firmwareFile:self.run_firmware_upload(fw), m.Append(-1, _(firmwareFile)))
-            if m.GetMenuItemCount() > 0:
-                self.menustrip.Append(m,_("Firmware upload"))
+            
+            #Add hardware selection menu
+            hardwareSetting = wx.Menu()
+            self.firmwareHardwareOptions.append(
+                { 'AvrDudeArgs': ["-c", "stk500v1", "-b", "19200", "-p", "atmega168"],
+                  'MenuItem': hardwareSetting.AppendCheckItem(-1, _("ATMega168 (Arduino Diecimila)"))
+                })
+            self.firmwareHardwareOptions.append(
+                { 'AvrDudeArgs': ["-c", "stk500v1", "-b", "57600", "-p", "atmega328"],
+                  'MenuItem': hardwareSetting.AppendCheckItem(-1, _("ATmega328 (Arduino Duemilanove w/ ATMega328)"))
+                })
+            self.firmwareHardwareOptions.append(
+                { 'AvrDudeArgs': ["-c", "stk500v1", "-b", "38400", "-p", "atmega664p"],
+                  'MenuItem': hardwareSetting.AppendCheckItem(-1, _("ATmega644P (Sanguino)"))
+                })
+            self.firmwareHardwareOptions.append(
+                { 'AvrDudeArgs': ["-c stk500v1", "-b", "57600", "-p", "atmega1280"],
+                  'MenuItem': hardwareSetting.AppendCheckItem(-1, _("ATmega1280 (Arduino Mega)"))
+                })
+            self.firmwareHardwareOptions.append(
+                { 'AvrDudeArgs': ["-c", "stk500v2", "-b", "115200", "-p", "atmega2560"],
+                  'MenuItem': hardwareSetting.AppendCheckItem(-1, _("ATmega2560 (Arduino Mega) (Ultimaker)"))
+                })
+            for item in self.firmwareHardwareOptions:
+                self.Bind(wx.EVT_MENU, lambda e,i=item:self.change_firmware_hardware(i), item['MenuItem'])
+            self.change_firmware_hardware(self.firmwareHardwareOptions[-1]);
+            m.AppendSubMenu(hardwareSetting, _("Arduino hardware"))
+            
+            #Make a list of possible firmwares.
+            if os.path.exists("firmware"):
+                for firmwareFile in os.listdir("firmware"):
+                    self.Bind(wx.EVT_MENU, lambda e,fw=firmwareFile:self.run_firmware_upload("firmware/"+fw), m.Append(-1, _(firmwareFile)))
+            self.Bind(wx.EVT_MENU, self.run_firmware_upload_other, m.Append(-1, _("Other hex file...")))
+            self.menustrip.Append(m, _("Firmware upload"))
 
         self.SetMenuBar(self.menustrip)
+    
+    def change_firmware_hardware(self, item):
+        for i in self.firmwareHardwareOptions:
+            i['MenuItem'].Check(False)
+        item['MenuItem'].Check()
     
     def doneediting(self,gcode):
         f=open(self.filename,"w")
@@ -1335,7 +1374,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             pass
         line = p.stdout.readline()
         while(len(line) > 0):
-            print(line[:-1])
+            print(line.rstrip())
             line = p.stdout.readline()
         fn=self.filename
         try:
@@ -1358,9 +1397,37 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../SkeinPyPy/skeinforge_application/skeinforge.py"));
         subprocess.call([sys.executable, script])
 
+    def run_firmware_upload_other(self, e):
+        dlg=wx.FileDialog(self,_("Open hex file for upload"),".",style=wx.FD_OPEN|wx.FD_FILE_MUST_EXIST)
+        dlg.SetWildcard(_("hex file (;*.hex;)"))
+        if dlg.ShowModal() == wx.ID_OK:
+            name=dlg.GetPath()
+            if not(os.path.exists(name)):
+                self.status.SetStatusText(_("File not found!"))
+                return
+            #AvrDude is a bit stupid and doesn't accept a drive letter in it's path. So under windows copy the file to our own location
+            if platform.system() == "Windows":
+                shutil.copyfile(name, "tmp_firmware.tmphex")
+                self.run_firmware_upload("tmp_firmware.tmphex")
+            else:
+                self.run_firmware_upload(name)
+        
     def run_firmware_upload(self, firmware):
-        self.disconnect(None);
-        p = subprocess.Popen(["avrdude", "-P", str(self.serialport.GetValue()), "-c", "arduino", "-p", "atmega2560", "-b", "115200", "-e", "-U", "flash:w:" + firmware], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        #Disconnect if we are connected
+        self.disconnect(None)
+        #Reset the arduino
+        rawSerial = Serial(self.serialport.GetValue(), 9600, timeout=5)
+        rawSerial.setDTR(1)
+        rawSerial.setDTR(0)
+        rawSerial.close()
+        
+        cmd = ["avrdude", "-P", str(self.serialport.GetValue()), "-e", "-U", "flash:w:" + firmware]
+        for i in self.firmwareHardwareOptions:
+            if i['MenuItem'].IsChecked():
+                cmd.extend(i['AvrDudeArgs'])
+        
+        print("Loading new firmware file: " + firmware)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         thread(target=lambda p=p:self.monitor_firmware_upload(p)).start()
 
     def monitor_firmware_upload(self, p):
@@ -1370,7 +1437,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             pass
         line = p.stdout.readline()
         while(len(line) > 0):
-            print(line[:-1])
+            print(line.rstrip())
             line = p.stdout.readline()
     
     def loadfile(self,event,filename=None):
@@ -1529,7 +1596,11 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             self.paused=0
             if self.sdprinting:
                 self.p.send_now("M26 S0")
-        self.p.connect(port,baud)
+        try:
+            self.p.connect(port,baud)
+        except SerialException as (ex):
+            print("Failed to connect. Port not found or in use.")
+            return
         self.statuscheck=True
         if port != self.settings.port:
             self.set("port",port)
