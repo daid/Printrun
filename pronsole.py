@@ -211,8 +211,8 @@ class Settings:
             pass
         return []
     def _all_settings(self):
-    	keys = self.__dict__.keys()
-    	keys.sort();
+        keys = self.__dict__.keys()
+        keys.sort();
         return dict([(k,getattr(self,k)) for k in keys if not k.startswith("_")])
 
 class pronsole(cmd.Cmd):
@@ -230,8 +230,8 @@ class pronsole(cmd.Cmd):
         self.sdfiles=[]
         self.paused=False
         self.sdprinting=0
-        self.temps={"pla":"185","abs":"230","off":"0"}
-        self.bedtemps={"pla":"60","abs":"110","off":"0"}
+        self.temps={"pla":"200","abs":"240","off":"0"}
+        self.bedtemps={"pla":"70","abs":"110","off":"0"}
         self.percentdone=0
         self.tempreadings=""
         self.macros={}

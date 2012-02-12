@@ -63,10 +63,10 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.settings.preview_grid_step1 = 10.
         self.settings.preview_grid_step2 = 50.
         self.settings.preview_extrusion_width = 0.5
-	self.settings.bgcolor = "#FFFFFF"
+        self.settings.bgcolor = "#FFFFFF"
         self.filename=filename
         os.putenv("UBUNTU_MENUPROXY","0")
-        wx.Frame.__init__(self,None,title=_("Printer Interface"),size=size);
+        wx.Frame.__init__(self,None,title=_("Printer Interface"),size=size,style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN);
         self.SetIcon(wx.Icon("P-face.ico",wx.BITMAP_TYPE_ICO))
         self.panel=wx.Panel(self,-1,size=size)
 
@@ -318,7 +318,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.Bind(wx.EVT_MENU, self.loadfile, m.Append(-1,_("&Open..."),_(" Opens file")))
         self.Bind(wx.EVT_MENU, self.do_editgcode, m.Append(-1,_("&Edit..."),_(" Edit open file")))
         self.Bind(wx.EVT_MENU, self.clearOutput, m.Append(-1,_("Clear console"),_(" Clear output console")))
-        self.Bind(wx.EVT_MENU, self.project, m.Append(-1,_("Projector"),_(" Project slices")))
+        #self.Bind(wx.EVT_MENU, self.project, m.Append(-1,_("Projector"),_(" Project slices")))
         self.Bind(wx.EVT_MENU, self.OnExit, m.Append(wx.ID_EXIT,_("E&xit"),_(" Closes the Window")))
         self.menustrip.Append(m,_("&File"))
         
@@ -340,7 +340,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.menustrip.Append(m,_("&Settings"))
         self.update_macros_menu()
 
-		#Skeinforge menu
+        #Skeinforge menu
         m = wx.Menu()
         path = '../'
         if os.path.isdir('../SkeinPyPy'):
@@ -680,7 +680,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         self.topsizer.Add(self.uppersizer)
         self.topsizer.Add(self.lowersizer)
         self.panel.SetSizer(self.topsizer)
-        self.status=self.CreateStatusBar()
+        self.status=self.CreateStatusBar(style = wx.FULL_REPAINT_ON_RESIZE)
         self.status.SetStatusText(_("Not connected to printer."))
         self.panel.Bind(wx.EVT_MOUSE_EVENTS,self.editbutton)
         self.Bind(wx.EVT_CLOSE, self.kill)
@@ -1121,12 +1121,13 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         try:
             while(self.statuscheck):
                 string=""
-                if(self.p.online):
-                    string+=_("Printer is online. ")
-                try:
-                    string+=_("Loaded ")+os.path.split(self.filename)[1]+" "
-                except:
-                    pass
+                if not self.p.online:
+                    string+=_("Printer is offline. ")
+                if not self.p.printing:
+                    try:
+                        string+=_("Loaded ")+os.path.split(self.filename)[1]+" "
+                    except:
+                        pass
                 string+=(self.tempreport.replace("\r","").replace("T",_("Hotend")).replace("B",_("Bed")).replace("\n","").replace("ok ",""))+" "
                 wx.CallAfter(self.tempdisp.SetLabel,self.tempreport.strip().replace("ok ",""))
                 #try:
@@ -1149,6 +1150,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
                     string+= _(" of: ") + time.strftime('%H:%M:%S', time.gmtime(secondsestimate))
                     string+= _(" Remaining | ")
                     string+= _(" Z: %0.2f mm") % self.curlayer
+                
                 wx.CallAfter(self.status.SetStatusText,string)
                 wx.CallAfter(self.gviz.Refresh)
                 if(self.monitor and self.p.online):
@@ -1357,7 +1359,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         subprocess.call([sys.executable, script])
 
     def run_firmware_upload(self, firmware):
-    	self.disconnect(None);
+        self.disconnect(None);
         p = subprocess.Popen(["avrdude", "-P", str(self.serialport.GetValue()), "-c", "arduino", "-p", "atmega2560", "-b", "115200", "-e", "-U", "flash:w:" + firmware], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         thread(target=lambda p=p:self.monitor_firmware_upload(p)).start()
 
