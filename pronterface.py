@@ -371,7 +371,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
                   'MenuItem': hardwareSetting.AppendCheckItem(-1, _("ATmega644P (Sanguino)"))
                 })
             self.firmwareHardwareOptions.append(
-                { 'AvrDudeArgs': ["-c stk500v1", "-b", "57600", "-p", "atmega1280"],
+                { 'AvrDudeArgs': ["-c", "stk500v1", "-b", "57600", "-p", "atmega1280"],
                   'MenuItem': hardwareSetting.AppendCheckItem(-1, _("ATmega1280 (Arduino Mega)"))
                 })
             self.firmwareHardwareOptions.append(
