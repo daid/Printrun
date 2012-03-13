@@ -591,8 +591,10 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         
         self.xyb = XYButtons(self.panel, self.moveXY, self.homeButtonClicked)
         lls.Add(self.xyb, pos=(2,0), span=(1,6), flag=wx.ALIGN_CENTER)
+        self.xyb.SetMinSize(self.xyb.GetClientSize())
         self.zb = ZButtons(self.panel, self.moveZ)
         lls.Add(self.zb, pos=(2,7), span=(1,2), flag=wx.ALIGN_CENTER)
+        self.zb.SetMinSize(self.zb.GetClientSize())
         wx.CallAfter(self.xyb.SetFocus)
                 
         for i in self.cpbuttons:
