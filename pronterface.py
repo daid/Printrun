@@ -591,8 +591,10 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
         
         self.xyb = XYButtons(self.panel, self.moveXY, self.homeButtonClicked)
         lls.Add(self.xyb, pos=(2,0), span=(1,6), flag=wx.ALIGN_CENTER)
+        self.xyb.SetMinSize(self.xyb.GetClientSize())
         self.zb = ZButtons(self.panel, self.moveZ)
         lls.Add(self.zb, pos=(2,7), span=(1,2), flag=wx.ALIGN_CENTER)
+        self.zb.SetMinSize(self.zb.GetClientSize())
         wx.CallAfter(self.xyb.SetFocus)
                 
         for i in self.cpbuttons:
@@ -1362,7 +1364,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             if not(os.path.exists(name)):
                 self.status.SetStatusText(_("File not found!"))
                 return
-            script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../SkeinPyPy/skeinpypy.py"));
+            script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../SkeinPyPy/skeinpypy.py"));
             self.filename = name
             p = subprocess.Popen([sys.executable, script, name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             thread(target=lambda p=p:self.monitor_skeinforge_slice(p)).start()
@@ -1394,7 +1396,7 @@ class PronterWindow(wx.Frame,pronsole.pronsole):
             self.filename=fn
 
     def run_skeinpypy_settings(self):
-        script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../SkeinPyPy/skeinpypy.py"));
+        script = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../SkeinPyPy/skeinpypy.py"));
         subprocess.call([sys.executable, script])
 
     def run_firmware_upload_other(self, e):
